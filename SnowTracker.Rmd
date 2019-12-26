@@ -1,0 +1,155 @@
+---
+title: "Snow Tracker"
+output: html_notebook
+---
+
+ 
+### Load rnoaa API package
+```{r}
+library(tidyverse)
+library(rnoaa)
+library(lubridate)
+key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
+```
+
+### create Station Dataframe
+```{r}
+my_stations <- data.frame(
+  mountain = c(
+               "Mt Hood Meadows",
+               "Mt Hood Meadows",
+               "Mt Hood Meadows", 
+               "Mt Baker",
+               "Mt Baker",
+               "Mt Baker",
+               "Mt Bachelor",
+               "Mt Bachelor",
+               "Mt Bachelor",
+               "White Pass",
+               "White Pass",
+               "White Pass",
+               "Jackson Hole",
+               "Jackson Hole",
+               "Jackson Hole",
+               "Schweitzer",
+               "Schweitzer",
+               "Schweitzer",
+               "Tahoe",
+               "Tahoe",
+               "Tahoe",
+               "White Fish",
+               "White Fish",
+               "White Fish"),
+  
+  id = c(
+               "USC00358530",
+               "USS0021D08S",
+               "USC00353402",
+               "USC00455663",
+               "USC00459294",
+               "USS0021A31S",
+               "USR0000OBEN",
+               "US1ORDS0034",
+               "USS0021E13S",
+               "USS0021C28S",
+               "USS0021C33S",
+               "USC00458653",
+               "US1WYTT0015",
+               "US1WYTT0013",
+               "US1WYTT0004",
+               "USS0016A10S",
+               "USS0016A13S",
+               "US1IDBR0013",
+               "USC00048474",
+               "USS0020K30S",
+               "USS0020K25S",
+               "US1MTFH0011",
+               "US1MTFH0004",
+               "USC00248902"))
+```
+
+### Use to find possible Elevation by Station
+```{r}
+### Create for loop vars
+y <- paste('GHCND',my_stations$id,sep = ":")
+count <- 0
+stations <- vector('list', length = length(my_stations$id))
+
+### Gather Data for Each Station
+for (i in seq_along(y))
+{
+    stations[[i]] <- ncdc_stations(datasetid='GHCND', 
+                     stationid = y[[i]],
+                     token = key)
+    count + 1
+}
+
+
+### Parse data to Dataframe
+stations_demographic <- 
+  data.frame(matrix(unlist(stations), nrow=length(stations), byrow=T))
+
+colnames(stations_demographic) <- 
+  c("elevation", 
+    "mindate", 
+    "maxdate", 
+    "latitude", 
+    "name", 
+    "datacoverage", 
+    "GHCND_id", 
+    "elevationUnit", 
+    "longitude"
+    )
+
+### Create elevation in ft, split ID, filter date
+stations_demographic <- stations_demographic %>% 
+  separate(GHCND_id, c("type","id"), sep = ":", remove = FALSE) %>% 
+  select(-c("mindate", "maxdate", "type", "elevationUnit")) %>% 
+  mutate(elevationFt = as.numeric(as.character(elevation)) * 3.28984) %>% 
+  rename(elevationMeter = elevation) %>% 
+  left_join(my_stations, by = c("id" = "id"))
+
+```
+
+
+### Metric Conversion Formulas
+```{r}
+farenheit <- function(celcius){
+  (celcius/10)*(9/5)+32
+}
+
+inch_rain <- function(millimeter){
+  (millimeter/10)/25.4
+}
+
+inch_snow <- function(snow){
+  snow/25.4
+}
+
+#### Add function for SWE equivalency and estimae snow density.
+
+```
+
+### Create Final Data Set
+```{r}
+
+obs <- meteo_pull_monitors(my_stations$id, date_min = '2019-11-01' ) %>% 
+   left_join(stations_demographic, by = c("id" = "id"))
+
+```
+
+### Convert from metric system
+```{r}
+
+obs_test <- obs %>% 
+  mutate(tavg = farenheit(tavg),
+         tmin = farenheit(tmin),
+         tmax = farenheit(tmax),
+         tobs = farenheit(tobs),
+         prcp = inch_rain(prcp),
+         snwd = inch_snow(snwd),
+         )
+
+
+```
+

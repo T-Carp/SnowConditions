@@ -1,0 +1,77 @@
+---
+title: "Snow Tracker Scratch"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(rnoaa)
+
+key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
+```
+
+
+
+### Use to find possible Elevation by Station
+```{r}
+y <- paste('GHCND',station_df$id,sep = ":")
+count <- 0
+for (i in seq_along(y))
+  {
+stations[[i]] <- ncdc_stations(datasetid='GHCND', 
+              stationid = y[[i]],
+              token = key)
+count + 1
+}
+stations
+```
+
+
+### Long Data form for Station Information
+```{r}
+
+snow <- ncdc(datasetid='GHCND', 
+            startdate = '2019-12-01', 
+            enddate = '2019-12-15', 
+            limit = 365,
+            stationid='GHCND:USS0021C28S',
+            token = key)
+
+snow$data
+```
+
+
+### Use to find isd stations in a radius
+```{r}
+isd_stations_search(lat = 45.328889, lon = -121.6625, radius = 100
+                    )
+```
+
+
+### Create Master Station Table for finding stations near point
+```{r}
+x <- ghcnd_stations(token = key)
+```
+
+### Look up stations near a lat/long point
+```{r}
+lat_lon_df <- data.frame(id = c("Mt Hood Meadows", "Mt Baker", "Mt Bachelor", "White Pass", "White Fish", "Schweitzer","Jackson Hole","Squaw Valley Tahoe"),
+latitude = c(45.328889, 48.859077, 43.992351,46.638311,48.483807,48.360537,43.597588,39.196360),
+longitude = c(-121.6625, -121.664604, -121.661239, -121.391195,-114.358121,-116.623138,-110.847392, -120.235379))
+
+station_search <- meteo_nearby_stations(lat_lon_df = lat_lon_df,
+station_data = x, radius = 20)
+
+station_search
+```
+
+
+### Pivot Table
+```{r}
+pivot <- obs %>% 
+  group_by(name,mountain, elevationFt) %>% 
+  summarize(snow = sum(snow, na.rm = TRUE))
+
+```
+
