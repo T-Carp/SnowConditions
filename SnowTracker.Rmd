@@ -127,8 +127,10 @@ inch_snow <- function(snow){
 }
 
 #### Add function for SWE equivalency and estimae snow density.
+snw_density <- function(swe,snwd){
+  (swe/snwd)*100
+}
 
-test test
 
 ```
 
@@ -136,7 +138,9 @@ test test
 ```{r}
 
 obs <- meteo_pull_monitors(my_stations$id, date_min = '2019-11-01' ) %>% 
-   left_join(stations_demographic, by = c("id" = "id"))
+   left_join(stations_demographic, by = c("id" = "id")) %>% 
+   select(-c("dapr","mdpr","awdr","awnd","wsfi"))
+
 
 ```
 
@@ -150,6 +154,8 @@ obs_test <- obs %>%
          tobs = farenheit(tobs),
          prcp = inch_rain(prcp),
          snwd = inch_snow(snwd),
+         wesd = inch_rain(wesd),
+         snw_dens = snw_density(wesd,snwd)
          )
 
 
