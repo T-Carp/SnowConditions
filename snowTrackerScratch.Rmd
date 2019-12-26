@@ -61,7 +61,7 @@ latitude = c(45.328889, 48.859077, 43.992351,46.638311,48.483807,48.360537,43.59
 longitude = c(-121.6625, -121.664604, -121.661239, -121.391195,-114.358121,-116.623138,-110.847392, -120.235379))
 
 station_search <- meteo_nearby_stations(lat_lon_df = lat_lon_df,
-station_data = x, radius = 20)
+station_data = x, radius = 30)
 
 station_search
 ```

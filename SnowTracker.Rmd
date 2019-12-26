@@ -9,6 +9,9 @@ output: html_notebook
 library(tidyverse)
 library(rnoaa)
 library(lubridate)
+library(ggplot2)
+library(shiny)
+library(shinydashboard)
 key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
 ```
 
@@ -28,18 +31,12 @@ my_stations <- data.frame(
                "White Pass",
                "White Pass",
                "White Pass",
-               "Jackson Hole",
-               "Jackson Hole",
-               "Jackson Hole",
                "Schweitzer",
                "Schweitzer",
                "Schweitzer",
                "Tahoe",
                "Tahoe",
-               "Tahoe",
-               "White Fish",
-               "White Fish",
-               "White Fish"),
+               "Tahoe"),
   
   id = c(
                "USC00358530",
@@ -54,18 +51,12 @@ my_stations <- data.frame(
                "USS0021C28S",
                "USS0021C33S",
                "USC00458653",
-               "US1WYTT0015",
-               "US1WYTT0013",
-               "US1WYTT0004",
                "USS0016A10S",
                "USS0016A13S",
                "US1IDBR0013",
                "USC00048474",
                "USS0020K30S",
-               "USS0020K25S",
-               "US1MTFH0011",
-               "US1MTFH0004",
-               "USC00248902"))
+               "USS0020K25S"))
 ```
 
 ### Use to find possible Elevation by Station
@@ -137,9 +128,9 @@ snw_density <- function(swe,snwd){
 ### Create Final Data Set
 ```{r}
 
-obs <- meteo_pull_monitors(my_stations$id, date_min = '2019-11-01' ) %>% 
+obs <- meteo_pull_monitors(my_stations$id, date_min = '2016-11-01' ) %>% 
    left_join(stations_demographic, by = c("id" = "id")) %>% 
-   select(-c("dapr","mdpr","awdr","awnd","wsfi"))
+   select(-c("awnd","wsfi"))
 
 
 ```
@@ -147,7 +138,7 @@ obs <- meteo_pull_monitors(my_stations$id, date_min = '2019-11-01' ) %>%
 ### Convert from metric system
 ```{r}
 
-obs_test <- obs %>% 
+obs_final <- obs %>% 
   mutate(tavg = farenheit(tavg),
          tmin = farenheit(tmin),
          tmax = farenheit(tmax),
@@ -159,5 +150,98 @@ obs_test <- obs %>%
          )
 
 
+```
+
+### GGPLot
+```{r}
+g <- ggplot(obs_test,aes(date,snwd))+geom_line()+theme_minimal()+facet_grid(.~name)
+
+g
+
+```
+
+
+### Shiny Workspace
+```{r}
+ui <- dashboardPage(
+  
+  
+      dashboardHeader(title = "Snow Tracker"),
+      
+      
+      
+      
+      dashboardSidebar(
+        menuItem("Mt Hood", tabName = "Mt Hood", icon = icon("dashboard")),
+        menuItem("Mt Bachelor", tabName = "Mt Bachelor", icon = icon("dashboard")),
+        menuItem("White Pass", tabName = "White Pass", icon = icon("dashboard")),
+        menuItem("Schweitzer", tabName = "Schweitzer", icon = icon("dashboard")),
+        menuItem("Tahoe", tabName = "Tahoe", icon = icon("dashboard"))
+        
+        
+        
+      ),
+      
+      
+      
+      
+      
+      
+      dashboardBody(
+         tabItems(
+      # First tab content
+      tabItem(tabName = "Mt Hood",
+                fluidRow(
+                  box(plotOutput("plot1", height = 250)),
+                  box(title = "Controls", sliderInput("slider", "Number of observations:", 1, 100, 50))
+                        )
+            ) 
+      
+                   )
+                    )
+)
+
+server <- function(input, output) {
+  set.seed(122)
+  histdata <- rnorm(500)
+
+  output$plot1 <- renderPlot({
+    data <- histdata[seq_len(input$slider)]
+    hist(data)
+  })
+}
+
+shinyApp(ui, server)
+
+```
+### Practice Space
+```{r}
+ui <- dashboardPage(
+  dashboardHeader(title = "Basic dashboard"),
+  dashboardSidebar(),
+  dashboardBody(
+    # Boxes need to be put in a row (or column)
+    fluidRow(
+      box(plotOutput("plot1", height = 250)),
+
+      box(
+        title = "Controls",
+        sliderInput("slider", "Number of observations:", 1, 100, 50)
+         )
+    )
+  )
+)
+
+server <- function(input, output) {
+  set.seed(175)
+  histdata <- rnorm(500)
+
+  output$plot1 <- renderPlot({
+    data <- histdata[seq_len(input$slider)]
+    hist(data)
+  })
+}
+
+shinyApp(ui, server)
 ```
 
