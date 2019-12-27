@@ -19,9 +19,9 @@ key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
 ```{r}
 my_stations <- data.frame(
   mountain = c(
-               "Mt Hood Meadows",
-               "Mt Hood Meadows",
-               "Mt Hood Meadows", 
+               "Mt Hood",
+               "Mt Hood",
+               "Mt Hood", 
                "Mt Baker",
                "Mt Baker",
                "Mt Baker",
@@ -130,7 +130,7 @@ snw_density <- function(swe,snwd){
 
 obs <- meteo_pull_monitors(my_stations$id, date_min = '2016-11-01' ) %>% 
    left_join(stations_demographic, by = c("id" = "id")) %>% 
-   select(-c("awnd","wsfi"))
+   select(-c("awnd","wsfi","wesf","awdr","mdpr","dapr","snow"))
 
 
 ```
@@ -154,92 +154,61 @@ obs_final <- obs %>%
 
 ### GGPLot
 ```{r}
-g <- ggplot(obs_test,aes(date,snwd))+geom_line()+theme_minimal()+facet_grid(.~name)
-
+g <- ggplot(obs_final,aes(date,snwd))+geom_line()+theme_minimal()
 g
 
+plot(obs_final$date, obs_final$snwd, type = "l")
 ```
 
 
 ### Shiny Workspace
+
 ```{r}
 ui <- dashboardPage(
-  
-  
-      dashboardHeader(title = "Snow Tracker"),
-      
-      
-      
-      
-      dashboardSidebar(
-        menuItem("Mt Hood", tabName = "Mt Hood", icon = icon("dashboard")),
-        menuItem("Mt Bachelor", tabName = "Mt Bachelor", icon = icon("dashboard")),
-        menuItem("White Pass", tabName = "White Pass", icon = icon("dashboard")),
-        menuItem("Schweitzer", tabName = "Schweitzer", icon = icon("dashboard")),
-        menuItem("Tahoe", tabName = "Tahoe", icon = icon("dashboard"))
-        
-        
-        
-      ),
-      
-      
-      
-      
-      
-      
-      dashboardBody(
-         tabItems(
-      # First tab content
-      tabItem(tabName = "Mt Hood",
-                fluidRow(
-                  box(plotOutput("plot1", height = 250)),
-                  box(title = "Controls", sliderInput("slider", "Number of observations:", 1, 100, 50))
-                        )
-            ) 
-      
-                   )
-                    )
-)
-
-server <- function(input, output) {
-  set.seed(122)
-  histdata <- rnorm(500)
-
-  output$plot1 <- renderPlot({
-    data <- histdata[seq_len(input$slider)]
-    hist(data)
-  })
-}
-
-shinyApp(ui, server)
-
-```
-### Practice Space
-```{r}
-ui <- dashboardPage(
-  dashboardHeader(title = "Basic dashboard"),
-  dashboardSidebar(),
+  dashboardHeader(title = "Snow Tracker"),
+  dashboardSidebar(
+    
+      selectInput("select", h3("Select Mountain"), 
+                       choices = list("Mt Hood" = 1, "Mt Baker" = 2,
+                                      "Mt Bachelor" = 3, "White Pass" = 4, "Schweitzer" = 5, "Tahoe" = 6), selected = 1),
+    
+    
+    
+        dateRangeInput("date", h3("Select a Date Range"), start = Sys.Date()-1095, end = Sys.Date(),
+        format = "yyyy-mm-dd", startview = "month", weekstart = 0,
+        language = "en" )
+    
+    ),
   dashboardBody(
     # Boxes need to be put in a row (or column)
     fluidRow(
-      box(plotOutput("plot1", height = 250)),
+      box(height = "100px", width = 13),
+      box(plotOutput("map", height = 400)),
+      box(plotOutput("temp", height = 400)),
+      box(plotOutput("snowdepth", height = 400)),
+      box(plotOutput("prcp", height = 400))
 
-      box(
-        title = "Controls",
-        sliderInput("slider", "Number of observations:", 1, 100, 50)
-         )
     )
+   
   )
 )
 
 server <- function(input, output) {
-  set.seed(175)
-  histdata <- rnorm(500)
-
-  output$plot1 <- renderPlot({
-    data <- histdata[seq_len(input$slider)]
-    hist(data)
+  
+  obs_react<- reactive({
+    switch(input$select,
+           "Mt Hood" = obs_final %>% filter(mountain == "Mt Hood"),
+           "Mt Bachelor" = obs_final %>% filter(mountain == "Mt Bachelor"),
+           "Mt Baker" = obs_final %>% filter(mountain =="Mt Baker"),
+           "White Pass" = obs_final %>% filter(mountain == "White Pass"),
+           "Schweitzer" = obs_final %>% filter(mountain == "Schweitzer"),
+           "Tahoe" = obs_final %>% filter(mountain == "Tahoe"))
   })
+  
+  output$snowdepth <- renderPlot({
+   ggplot(obs_react,aes(date,snwd))+geom_line()+scale_x_date(limits = c(input$date[1], input$date[2]))
+  })
+
 }
 
 shinyApp(ui, server)
