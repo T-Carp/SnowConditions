@@ -10,8 +10,10 @@ library(tidyverse)
 library(rnoaa)
 library(lubridate)
 library(ggplot2)
+library(ggthemes)
 library(shiny)
 library(shinydashboard)
+library(plotly)
 key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
 ```
 
@@ -126,7 +128,7 @@ snw_density <- function(swe,snwd){
 ```
 
 ### Create Final Data Set
-```{r}
+```{r, message=FALSE}
 
 obs <- meteo_pull_monitors(my_stations$id, date_min = '2016-11-01' ) %>% 
    left_join(stations_demographic, by = c("id" = "id")) %>% 
@@ -146,47 +148,86 @@ obs_final <- obs %>%
          prcp = inch_rain(prcp),
          snwd = inch_snow(snwd),
          wesd = inch_rain(wesd),
-         snw_dens = snw_density(wesd,snwd)
-         )
+         snw_dens = snw_density(wesd,snwd),
+         latitude = as.numeric(as.character(latitude)),
+         longitude = as.numeric(as.character(longitude))
+         ) %>% 
+  filter(!is.na(tavg))
 
 
 ```
 
-### GGPLot
+### Temp Data Frame
 ```{r}
-g <- ggplot(obs_final,aes(date,snwd))+geom_line()+theme_minimal()
-g
+temp_final <- obs_final %>% 
+  select(mountain, name, date, tavg, tmax, tmin) %>% 
+  gather(key = temptype, value = temp, c(tavg,tmax,tmin))
 
-plot(obs_final$date, obs_final$snwd, type = "l")
+
 ```
 
 
 ### Shiny Workspace
-
-```{r}
+```{r, message=FALSE}
 ui <- dashboardPage(
   dashboardHeader(title = "Snow Tracker"),
   dashboardSidebar(
     
-      selectInput("select", h3("Select Mountain"), 
-                       choices = list("Mt Hood" = 1, "Mt Baker" = 2,
-                                      "Mt Bachelor" = 3, "White Pass" = 4, "Schweitzer" = 5, "Tahoe" = 6), selected = 1),
+      selectInput("select", 
+                  h3("Select Mountain"), 
+                  choices = list("Mt Hood" = 1, 
+                                 "Mt Baker" = 2,
+                                 "Mt Bachelor" = 3, 
+                                 "White Pass" = 4, 
+                                 "Schweitzer" = 5, 
+                                 "Tahoe" = 6), 
+                                  selected = 1),
     
     
     
-        dateRangeInput("date", h3("Select a Date Range"), start = Sys.Date()-1095, end = Sys.Date(),
-        format = "yyyy-mm-dd", startview = "month", weekstart = 0,
-        language = "en" )
+      dateRangeInput("date", 
+                       h3("Select a Date Range"), 
+                       start = Sys.Date()-550, 
+                       end = Sys.Date(),
+                       format = "yyyy-mm-dd", 
+                       startview = "month", 
+                       weekstart = 0,
+                       language = "en" )
     
-    ),
+                ),
   dashboardBody(
+    fluidRow(
+          # Frontpage - boxes - start -----------------------------------------------
+          valueBox(
+            "Date","Last Refresh",
+            color = "blue",
+            icon = icon("calendar-alt"),
+            width = 3),
+          valueBox(
+            "Snow","Snow in last 7 days",
+            color = "light-blue",
+            icon = icon("snowflake"),
+            width = 3),
+          valueBox(
+            "Test","Current Snow Density",
+            color = "aqua",
+            icon = icon("thumbs-up"),
+            width = 3),
+           valueBox(
+            "Test","Precipitation Last 7 days",
+            color = "teal",
+            icon = icon("tint"),
+            width = 3)
+          ),
+
+          # Frontpage - boxes - end -------------------------------------------------
+        
     # Boxes need to be put in a row (or column)
     fluidRow(
-      box(height = "100px", width = 13),
-      box(plotOutput("map", height = 400)),
-      box(plotOutput("temp", height = 400)),
-      box(plotOutput("snowdepth", height = 400)),
-      box(plotOutput("prcp", height = 400))
+      box(leafletOutput("map", height = 400)),
+      box(plotlyOutput("temp", height = 400)),
+      box(plotlyOutput("snowdepth", height = 400)),
+      box(plotlyOutput("prcp", height = 400))
 
     )
    
@@ -195,19 +236,89 @@ ui <- dashboardPage(
 
 server <- function(input, output) {
   
-  obs_react<- reactive({
-    switch(input$select,
-           "Mt Hood" = obs_final %>% filter(mountain == "Mt Hood"),
-           "Mt Bachelor" = obs_final %>% filter(mountain == "Mt Bachelor"),
-           "Mt Baker" = obs_final %>% filter(mountain =="Mt Baker"),
-           "White Pass" = obs_final %>% filter(mountain == "White Pass"),
-           "Schweitzer" = obs_final %>% filter(mountain == "Schweitzer"),
-           "Tahoe" = obs_final %>% filter(mountain == "Tahoe"))
+  output$snowdepth <- renderPlotly({
+      data <- switch(input$select,
+           "1" = obs_final %>% filter(mountain == "Mt Hood"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
+           "2" = obs_final %>% filter(mountain =="Mt Baker"),
+           "4" = obs_final %>% filter(mountain == "White Pass"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer"),
+           "6" = obs_final %>% filter(mountain == "Tahoe"))
+      
+     p <- ggplot(data,aes(date,snwd))+
+        geom_line(aes(color=name))+
+        scale_x_date(limits = c(input$date[1], input$date[2]))+
+        theme(legend.position="none")+
+        ggtitle("Snow Depth by Weather Station (Inches)")
+     ggplotly(p)
+  })
+    
+  output$map <- renderLeaflet({
+    
+      data <- switch(input$select,
+           "1" = obs_final %>% filter(mountain == "Mt Hood"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
+           "2" = obs_final %>% filter(mountain =="Mt Baker"),
+           "4" = obs_final %>% filter(mountain == "White Pass"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer"),
+           "6" = obs_final %>% filter(mountain == "Tahoe"))
+      
+    content <- paste(sep = "<br/>",
+        paste("Ski Resort: ", data$mountain),                 
+        paste("Station: ",data$name),
+        paste("Elevation: ",data$elevationFt))
+    
+    zoom_lng <- mean(data$longitude)
+    zoom_lat <- mean(data$latitude)
+    
+  
+    leaflet() %>%
+    addTiles() %>% 
+    addMarkers(lng= data$longitude, lat= data$latitude, popup = content)  
   })
   
-  output$snowdepth <- renderPlot({
-   ggplot(obs_react,aes(date,snwd))+geom_line()+scale_x_date(limits = c(input$date[1], input$date[2]))
-  })
+output$temp <- renderPlotly({
+  
+    temp_final <- switch(input$select,
+           "1" = temp_final %>% filter(mountain == "Mt Hood"),
+           "3" = temp_final %>% filter(mountain == "Mt Bachelor"),
+           "2" = temp_final %>% filter(mountain =="Mt Baker"),
+           "4" = temp_final %>% filter(mountain == "White Pass"),
+           "5" = temp_final %>% filter(mountain == "Schweitzer"),
+           "6" = temp_final %>% filter(mountain == "Tahoe"))
+    
+ f <- ggplot(temp_final,aes(date,temp))+
+        geom_smooth(aes(group=temptype,color=temptype))+
+        scale_x_date(limits = c(input$date[1], input$date[2]))+
+        theme(legend.position="none")+
+        ggtitle("Temperature by Mountain (Farenheit)")
+  
+  ggplotly(f, tooltip = "temp")
+  
+})
+  
+output$prcp <- renderPlotly({
+  
+     prcp_final <- switch(input$select,
+           "1" = obs_final %>% filter(mountain == "Mt Hood"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
+           "2" = obs_final %>% filter(mountain =="Mt Baker"),
+           "4" = obs_final %>% filter(mountain == "White Pass"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer"),
+           "6" = obs_final %>% filter(mountain == "Tahoe"))
+    
+ q <- ggplot(prcp_final,aes(date,prcp))+
+        geom_line(aes(color=name))+
+        scale_x_date(limits = c(input$date[1], input$date[2]))+
+        theme(legend.position="none")+
+        ggtitle("Percipitation by Weather Station (Inches)")
+     ggplotly(q)
+  
+  ggplotly(q)
+  
+})
+
+
 
 }
 
