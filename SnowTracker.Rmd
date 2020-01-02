@@ -166,6 +166,15 @@ temp_final <- obs_final %>%
 
 ```
 
+```{r}
+obs_white <- obs_final %>% 
+  filter(mountain == "White Pass") %>% 
+  arrange(desc(date)) %>% 
+  filter(!is.na(date),!is.na(snwd)) %>% 
+  filter(elevationFt == max(elevationFt)) %>% 
+  filter(date == max(date))%>% 
+    select(date)
+```
 
 ### Shiny Workspace
 ```{r, message=FALSE}
@@ -183,7 +192,7 @@ ui <- dashboardPage(
                                  "Tahoe" = 6), 
                                   selected = 1),
     
-    
+
     
       dateRangeInput("date", 
                        h3("Select a Date Range"), 
@@ -193,31 +202,14 @@ ui <- dashboardPage(
                        startview = "month", 
                        weekstart = 0,
                        language = "en" )
-    
                 ),
   dashboardBody(
     fluidRow(
           # Frontpage - boxes - start -----------------------------------------------
-          valueBox(
-            "Date","Last Refresh",
-            color = "blue",
-            icon = icon("calendar-alt"),
-            width = 3),
-          valueBox(
-            "Snow","Snow in last 7 days",
-            color = "light-blue",
-            icon = icon("snowflake"),
-            width = 3),
-          valueBox(
-            "Test","Current Snow Density",
-            color = "aqua",
-            icon = icon("thumbs-up"),
-            width = 3),
-           valueBox(
-            "Test","Precipitation Last 7 days",
-            color = "teal",
-            icon = icon("tint"),
-            width = 3)
+          valueBoxOutput("date_out"),
+          valueBoxOutput("depth_out"),
+          valueBoxOutput("density")
+     
           ),
 
           # Frontpage - boxes - end -------------------------------------------------
@@ -267,10 +259,6 @@ server <- function(input, output) {
         paste("Ski Resort: ", data$mountain),                 
         paste("Station: ",data$name),
         paste("Elevation: ",data$elevationFt))
-    
-    zoom_lng <- mean(data$longitude)
-    zoom_lat <- mean(data$latitude)
-    
   
     leaflet() %>%
     addTiles() %>% 
@@ -318,7 +306,92 @@ output$prcp <- renderPlotly({
   
 })
 
+output$date_out <- renderValueBox({
+date_df <-  switch(input$select,
+           "1" = obs_final %>% filter(mountain == "Mt Hood"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
+           "2" = obs_final %>% filter(mountain == "Mt Baker"),
+           "4" = obs_final %>% filter(mountain == "White Pass"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer"),
+           "6" = obs_final %>% filter(mountain == "Tahoe")) %>% 
+  filter(!is.na(date),!is.na(snwd))
+  
+  valueBox(
+    date_df %>% 
+    filter(elevationFt == max(elevationFt)) %>% 
+    filter(date == max(date)) %>% 
+    select(date),"Last Snow Depth Reading",
+            color = "blue",
+            icon = icon("calendar-alt"),
+            width = 2
+         )
+})
 
+output$depth_out <- renderValueBox({
+  
+ data_depth <- switch(input$select,
+           "1" = obs_final %>% filter(mountain == "Mt Hood"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
+           "2" = obs_final %>% filter(mountain =="Mt Baker"),
+           "4" = obs_final %>% filter(mountain == "White Pass"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer"),
+           "6" = obs_final %>% filter(mountain == "Tahoe")) %>% 
+ filter(!is.na(date),!is.na(snwd))
+ 
+ depth_find <- function(df){
+ x <- df %>% filter(elevationFt == max(elevationFt)) %>% 
+   filter(date == max(date)) %>% 
+   select(snwd)
+ 
+ y <- df %>% filter(elevationFt == max(elevationFt)) %>% 
+             filter(date == min(date)) %>% 
+             select(snwd)
+ 
+ change <- x-y
+ change <- as.integer(change)
+ return(change)
+ }
+ 
+  valueBox(
+    data_depth %>% 
+    select(date,snwd,elevationFt) %>% 
+    filter(date <= max(date),date >= max(date)-7, !is.na(snwd)) %>% 
+    depth_find(),
+    
+    "Snow Depth Change in last 7 days",
+            color = "light-blue",
+            icon = icon("snowflake"),
+            width = 2
+  )
+})
+
+output$density <- renderValueBox({
+  
+ data_dens <- switch(input$select,
+           "1" = obs_final %>% filter(mountain == "Mt Hood"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
+           "2" = obs_final %>% filter(mountain == "Mt Baker"),
+           "4" = obs_final %>% filter(mountain == "White Pass"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer"),
+           "6" = obs_final %>% filter(mountain == "Tahoe")) %>% 
+   filter(!is.na(snw_dens))
+ 
+ dens_find <- function(df){
+ x <- df %>% filter(elevationFt == max(elevationFt)) %>% 
+   filter(date == max(date)) %>%
+   select(snw_dens)
+ return(as.integer(x))
+ }
+ 
+  valueBox(data_dens %>% 
+    select(date,snw_dens,elevationFt) %>% 
+    dens_find(),
+    "Current Snow Density",
+            color = "aqua",
+            icon = icon("thumbs-up"),
+            width = 3
+  )
+})
 
 }
 
