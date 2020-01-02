@@ -14,6 +14,7 @@ library(ggthemes)
 library(shiny)
 library(shinydashboard)
 library(plotly)
+library(leaflet)
 key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
 ```
 
@@ -98,7 +99,6 @@ colnames(stations_demographic) <-
 stations_demographic <- stations_demographic %>% 
   separate(GHCND_id, c("type","id"), sep = ":", remove = FALSE) %>% 
   select(-c("mindate", "maxdate", "type", "elevationUnit")) %>% 
-  mutate(elevationFt = as.numeric(as.character(elevation)) * 3.28984) %>% 
   rename(elevationMeter = elevation) %>% 
   left_join(my_stations, by = c("id" = "id"))
 
@@ -122,6 +122,10 @@ inch_snow <- function(snow){
 #### Add function for SWE equivalency and estimae snow density.
 snw_density <- function(swe,snwd){
   (swe/snwd)*100
+}
+
+elevation_ft <- function(elevation){
+  as.numeric(as.character(elevation)) * 3.28984
 }
 
 
@@ -148,6 +152,7 @@ obs_final <- obs %>%
          prcp = inch_rain(prcp),
          snwd = inch_snow(snwd),
          wesd = inch_rain(wesd),
+         elevationFt = elevation_ft(elevationMeter),
          snw_dens = snw_density(wesd,snwd),
          latitude = as.numeric(as.character(latitude)),
          longitude = as.numeric(as.character(longitude))
@@ -166,15 +171,6 @@ temp_final <- obs_final %>%
 
 ```
 
-```{r}
-obs_white <- obs_final %>% 
-  filter(mountain == "White Pass") %>% 
-  arrange(desc(date)) %>% 
-  filter(!is.na(date),!is.na(snwd)) %>% 
-  filter(elevationFt == max(elevationFt)) %>% 
-  filter(date == max(date))%>% 
-    select(date)
-```
 
 ### Shiny Workspace
 ```{r, message=FALSE}
@@ -204,17 +200,19 @@ ui <- dashboardPage(
                        language = "en" )
                 ),
   dashboardBody(
+    
+              # Frontpage - boxes - start -----------------------------------------------
     fluidRow(
-          # Frontpage - boxes - start -----------------------------------------------
+      
           valueBoxOutput("date_out"),
           valueBoxOutput("depth_out"),
           valueBoxOutput("density")
-     
           ),
 
           # Frontpage - boxes - end -------------------------------------------------
         
-    # Boxes need to be put in a row (or column)
+         # Box layout - Grid - Start
+#-------------------------------------------------
     fluidRow(
       box(leafletOutput("map", height = 400)),
       box(plotlyOutput("temp", height = 400)),
@@ -222,12 +220,13 @@ ui <- dashboardPage(
       box(plotlyOutput("prcp", height = 400))
 
     )
-   
+          #Box layout - Grid - end #------------------------------------------------- 
   )
 )
 
 server <- function(input, output) {
   
+  ### Snow Depth Chart
   output$snowdepth <- renderPlotly({
       data <- switch(input$select,
            "1" = obs_final %>% filter(mountain == "Mt Hood"),
@@ -244,7 +243,8 @@ server <- function(input, output) {
         ggtitle("Snow Depth by Weather Station (Inches)")
      ggplotly(p)
   })
-    
+   
+  ### Station Location Map 
   output$map <- renderLeaflet({
     
       data <- switch(input$select,
@@ -265,7 +265,8 @@ server <- function(input, output) {
     addMarkers(lng= data$longitude, lat= data$latitude, popup = content)  
   })
   
-output$temp <- renderPlotly({
+  ### Temp Chart
+  output$temp <- renderPlotly({
   
     temp_final <- switch(input$select,
            "1" = temp_final %>% filter(mountain == "Mt Hood"),
@@ -285,7 +286,8 @@ output$temp <- renderPlotly({
   
 })
   
-output$prcp <- renderPlotly({
+  ### PRCP Chart
+  output$prcp <- renderPlotly({
   
      prcp_final <- switch(input$select,
            "1" = obs_final %>% filter(mountain == "Mt Hood"),
@@ -306,8 +308,9 @@ output$prcp <- renderPlotly({
   
 })
 
-output$date_out <- renderValueBox({
-date_df <-  switch(input$select,
+  ### Max Date Value Box
+  output$date_out <- renderValueBox({
+  date_df <-  switch(input$select,
            "1" = obs_final %>% filter(mountain == "Mt Hood"),
            "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
            "2" = obs_final %>% filter(mountain == "Mt Baker"),
@@ -327,16 +330,17 @@ date_df <-  switch(input$select,
          )
 })
 
-output$depth_out <- renderValueBox({
+  ### Depth Change Value Box
+  output$depth_out <- renderValueBox({
   
- data_depth <- switch(input$select,
+  data_depth <- switch(input$select,
            "1" = obs_final %>% filter(mountain == "Mt Hood"),
            "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
            "2" = obs_final %>% filter(mountain =="Mt Baker"),
            "4" = obs_final %>% filter(mountain == "White Pass"),
            "5" = obs_final %>% filter(mountain == "Schweitzer"),
            "6" = obs_final %>% filter(mountain == "Tahoe")) %>% 
- filter(!is.na(date),!is.na(snwd))
+  filter(!is.na(date),!is.na(snwd))
  
  depth_find <- function(df){
  x <- df %>% filter(elevationFt == max(elevationFt)) %>% 
@@ -352,12 +356,12 @@ output$depth_out <- renderValueBox({
  return(change)
  }
  
-  valueBox(
-    data_depth %>% 
+depth <- data_depth %>% 
     select(date,snwd,elevationFt) %>% 
     filter(date <= max(date),date >= max(date)-7, !is.na(snwd)) %>% 
-    depth_find(),
-    
+    depth_find()
+ 
+  valueBox(paste(depth," Inches"),
     "Snow Depth Change in last 7 days",
             color = "light-blue",
             icon = icon("snowflake"),
@@ -365,9 +369,10 @@ output$depth_out <- renderValueBox({
   )
 })
 
-output$density <- renderValueBox({
+  ### Last Recorded Snow Density
+  output$density <- renderValueBox({
   
- data_dens <- switch(input$select,
+  data_dens <- switch(input$select,
            "1" = obs_final %>% filter(mountain == "Mt Hood"),
            "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
            "2" = obs_final %>% filter(mountain == "Mt Baker"),
@@ -383,13 +388,21 @@ output$density <- renderValueBox({
  return(as.integer(x))
  }
  
-  valueBox(data_dens %>% 
+ icon_func <- function(d){
+   ifelse(d > 25, return(icon("thumbs-down")),return(icon("thumbs-up")))
+ }
+ 
+ d <- data_dens %>% 
     select(date,snw_dens,elevationFt) %>% 
-    dens_find(),
+    dens_find()
+ 
+  valueBox(paste(d,"%"),
     "Current Snow Density",
             color = "aqua",
-            icon = icon("thumbs-up"),
+            icon = icon_func(d),
             width = 3
+            
+    
   )
 })
 
