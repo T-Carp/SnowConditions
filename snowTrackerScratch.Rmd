@@ -32,10 +32,10 @@ stations
 ```{r}
 
 snow <- ncdc(datasetid='GHCND', 
-            startdate = '2019-12-01', 
-            enddate = '2019-12-15', 
+            startdate = '2019-11-01', 
+            enddate = '2019-12-19', 
             limit = 365,
-            stationid='GHCND:USS0021C28S',
+            stationid='GHCND:USC00358530',
             token = key)
 
 snow$data
@@ -69,9 +69,8 @@ station_search
 
 ### Pivot Table
 ```{r}
-pivot <- obs %>% 
-  group_by(name,mountain, elevationFt) %>% 
-  summarize(snow = sum(snow, na.rm = TRUE))
+hood <- obs_final %>% 
+  filter(mountain == "Mt Hood") %>% 
+  arrange(desc(date))
 
 ```
-

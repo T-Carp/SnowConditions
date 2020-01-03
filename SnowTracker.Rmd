@@ -15,11 +15,14 @@ library(shiny)
 library(shinydashboard)
 library(plotly)
 library(leaflet)
+theme_set(theme_minimal())
 key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
 ```
 
 ### create Station Dataframe
 ```{r}
+meteo_clear_cache(force = FALSE)
+
 my_stations <- data.frame(
   mountain = c(
                "Mt Hood",
@@ -237,10 +240,15 @@ server <- function(input, output) {
            "6" = obs_final %>% filter(mountain == "Tahoe"))
       
      p <- ggplot(data,aes(date,snwd))+
-        geom_line(aes(color=name))+
+        geom_line(aes(color=name),size=1)+
         scale_x_date(limits = c(input$date[1], input$date[2]))+
-        theme(legend.position="none")+
-        ggtitle("Snow Depth by Weather Station (Inches)")
+        theme(legend.position="none",
+              axis.title.x=element_blank(),
+              axis.title.y=element_blank())+
+        ggtitle("Snow Depth by Station (Inches)")+ 
+        scale_colour_economist()
+      
+    
      ggplotly(p)
   })
    
@@ -279,10 +287,12 @@ server <- function(input, output) {
  f <- ggplot(temp_final,aes(date,temp))+
         geom_smooth(aes(group=temptype,color=temptype))+
         scale_x_date(limits = c(input$date[1], input$date[2]))+
-        theme(legend.position="none")+
-        ggtitle("Temperature by Mountain (Farenheit)")
-  
-  ggplotly(f, tooltip = "temp")
+        theme(legend.position="none",
+              axis.title.x=element_blank(),
+              axis.title.y=element_blank())+
+        ggtitle("Temperature by Station (Farenheit)")+
+        scale_color_economist()
+        ggplotly(f, tooltip = "temp")
   
 })
   
@@ -298,10 +308,14 @@ server <- function(input, output) {
            "6" = obs_final %>% filter(mountain == "Tahoe"))
     
  q <- ggplot(prcp_final,aes(date,prcp))+
-        geom_line(aes(color=name))+
+        geom_line(aes(color=name,fill="blues"), size=1)+
         scale_x_date(limits = c(input$date[1], input$date[2]))+
-        theme(legend.position="none")+
-        ggtitle("Percipitation by Weather Station (Inches)")
+        theme(legend.position="none",
+              axis.title.x=element_blank(),
+              axis.title.y=element_blank())+
+        ggtitle("Precipitation by Station (Inches)") +   
+        scale_color_economist()
+        
      ggplotly(q)
   
   ggplotly(q)
@@ -363,7 +377,7 @@ depth <- data_depth %>%
  
   valueBox(paste(depth," Inches"),
     "Snow Depth Change in last 7 days",
-            color = "light-blue",
+            color = "teal",
             icon = icon("snowflake"),
             width = 2
   )
