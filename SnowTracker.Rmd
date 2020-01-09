@@ -11,6 +11,7 @@ library(rnoaa)
 library(lubridate)
 library(ggplot2)
 library(ggthemes)
+library(scales)
 library(shiny)
 library(shinydashboard)
 library(plotly)
@@ -25,24 +26,24 @@ meteo_clear_cache(force = FALSE)
 
 my_stations <- data.frame(
   mountain = c(
-               "Mt Hood",
-               "Mt Hood",
-               "Mt Hood", 
-               "Mt Baker",
-               "Mt Baker",
-               "Mt Baker",
-               "Mt Bachelor",
-               "Mt Bachelor",
-               "Mt Bachelor",
-               "White Pass",
-               "White Pass",
-               "White Pass",
-               "Schweitzer",
-               "Schweitzer",
-               "Schweitzer",
-               "Tahoe",
-               "Tahoe",
-               "Tahoe"),
+               "Mt Hood, Oregon, USA",
+               "Mt Hood, Oregon, USA",
+               "Mt Hood, Oregon, USA", 
+               "Mt Baker, Washington, USA",
+               "Mt Baker, Washington, USA",
+               "Mt Baker, Washington, USA",
+               "Mt Bachelor, Oregon, USA",
+               "Mt Bachelor, Oregon, USA",
+               "Mt Bachelor, Oregon, USA",
+               "White Pass, Washington, USA",
+               "White Pass, Washington, USA",
+               "White Pass, Washington, USA",
+               "Schweitzer, Idaho, USA",
+               "Schweitzer, Idaho, USA",
+               "Schweitzer, Idaho, USA",
+               "Tahoe, California, USA",
+               "Tahoe, California, USA",
+               "Tahoe, California, USA"),
   
   id = c(
                "USC00358530",
@@ -183,12 +184,12 @@ ui <- dashboardPage(
     
       selectInput("select", 
                   h3("Select Mountain"), 
-                  choices = list("Mt Hood" = 1, 
-                                 "Mt Baker" = 2,
-                                 "Mt Bachelor" = 3, 
-                                 "White Pass" = 4, 
-                                 "Schweitzer" = 5, 
-                                 "Tahoe" = 6), 
+                  choices = list("Mt Hood, Oregon, USA" = 1, 
+                                 "Mt Baker, Washington, USA" = 2,
+                                 "Mt Bachelor, Oregon, USA" = 3, 
+                                 "White Pass, Washington, USA" = 4, 
+                                 "Schweitzer, Idaho, USA" = 5, 
+                                 "Tahoe, California, USA" = 6), 
                                   selected = 1),
     
 
@@ -232,21 +233,21 @@ server <- function(input, output) {
   ### Snow Depth Chart
   output$snowdepth <- renderPlotly({
       data <- switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
-           "2" = obs_final %>% filter(mountain =="Mt Baker"),
-           "4" = obs_final %>% filter(mountain == "White Pass"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer"),
-           "6" = obs_final %>% filter(mountain == "Tahoe"))
+           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
+           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
+           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
+           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA"))
       
      p <- ggplot(data,aes(date,snwd))+
-        geom_line(aes(color=name),size=1)+
+        geom_area(aes(fill=name),size=1)+
         scale_x_date(limits = c(input$date[1], input$date[2]))+
         theme(legend.position="none",
               axis.title.x=element_blank(),
               axis.title.y=element_blank())+
         ggtitle("Snow Depth by Station (Inches)")+ 
-        scale_colour_economist()
+        scale_fill_manual(values = c("#6794a7", "#76c0c1"))
       
     
      ggplotly(p)
@@ -256,12 +257,12 @@ server <- function(input, output) {
   output$map <- renderLeaflet({
     
       data <- switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
-           "2" = obs_final %>% filter(mountain =="Mt Baker"),
-           "4" = obs_final %>% filter(mountain == "White Pass"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer"),
-           "6" = obs_final %>% filter(mountain == "Tahoe"))
+           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
+           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
+           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
+           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA"))
       
     content <- paste(sep = "<br/>",
         paste("Ski Resort: ", data$mountain),                 
@@ -277,12 +278,12 @@ server <- function(input, output) {
   output$temp <- renderPlotly({
   
     temp_final <- switch(input$select,
-           "1" = temp_final %>% filter(mountain == "Mt Hood"),
-           "3" = temp_final %>% filter(mountain == "Mt Bachelor"),
-           "2" = temp_final %>% filter(mountain =="Mt Baker"),
-           "4" = temp_final %>% filter(mountain == "White Pass"),
-           "5" = temp_final %>% filter(mountain == "Schweitzer"),
-           "6" = temp_final %>% filter(mountain == "Tahoe"))
+           "1" = temp_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
+           "3" = temp_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
+           "2" = temp_final %>% filter(mountain == "Mt Baker, Washington, USA"),
+           "4" = temp_final %>% filter(mountain == "White Pass, Washington, USA"),
+           "5" = temp_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
+           "6" = temp_final %>% filter(mountain == "Tahoe, California, USA"))
     
  f <- ggplot(temp_final,aes(date,temp))+
         geom_smooth(aes(group=temptype,color=temptype))+
@@ -300,12 +301,12 @@ server <- function(input, output) {
   output$prcp <- renderPlotly({
   
      prcp_final <- switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
-           "2" = obs_final %>% filter(mountain =="Mt Baker"),
-           "4" = obs_final %>% filter(mountain == "White Pass"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer"),
-           "6" = obs_final %>% filter(mountain == "Tahoe"))
+           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
+           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
+           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
+           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA"))
     
  q <- ggplot(prcp_final,aes(date,prcp))+
         geom_line(aes(color=name), size=1)+
@@ -318,19 +319,19 @@ server <- function(input, output) {
         
      ggplotly(q)
   
-  ggplotly(q)
+
   
 })
 
   ### Max Date Value Box
   output$date_out <- renderValueBox({
   date_df <-  switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
-           "2" = obs_final %>% filter(mountain == "Mt Baker"),
-           "4" = obs_final %>% filter(mountain == "White Pass"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer"),
-           "6" = obs_final %>% filter(mountain == "Tahoe")) %>% 
+           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
+           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
+           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
+           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA")) %>% 
   filter(!is.na(date),!is.na(snwd))
   
   valueBox(
@@ -348,12 +349,12 @@ server <- function(input, output) {
   output$depth_out <- renderValueBox({
   
   data_depth <- switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
-           "2" = obs_final %>% filter(mountain =="Mt Baker"),
-           "4" = obs_final %>% filter(mountain == "White Pass"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer"),
-           "6" = obs_final %>% filter(mountain == "Tahoe")) %>% 
+           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
+           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
+           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
+           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA")) %>% 
   filter(!is.na(date),!is.na(snwd))
  
  depth_find <- function(df){
@@ -387,12 +388,12 @@ depth <- data_depth %>%
   output$density <- renderValueBox({
   
   data_dens <- switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor"),
-           "2" = obs_final %>% filter(mountain == "Mt Baker"),
-           "4" = obs_final %>% filter(mountain == "White Pass"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer"),
-           "6" = obs_final %>% filter(mountain == "Tahoe")) %>% 
+           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
+           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
+           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
+           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
+           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
+           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA")) %>% 
    filter(!is.na(snw_dens))
  
  dens_find <- function(df){
