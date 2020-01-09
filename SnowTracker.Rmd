@@ -308,7 +308,7 @@ server <- function(input, output) {
            "6" = obs_final %>% filter(mountain == "Tahoe"))
     
  q <- ggplot(prcp_final,aes(date,prcp))+
-        geom_line(aes(color=name,fill="blues"), size=1)+
+        geom_line(aes(color=name), size=1)+
         scale_x_date(limits = c(input$date[1], input$date[2]))+
         theme(legend.position="none",
               axis.title.x=element_blank(),
@@ -372,11 +372,11 @@ server <- function(input, output) {
  
 depth <- data_depth %>% 
     select(date,snwd,elevationFt) %>% 
-    filter(date <= max(date),date >= max(date)-7, !is.na(snwd)) %>% 
+    filter(date <= max(date),date >= max(date)-4, !is.na(snwd)) %>% 
     depth_find()
  
   valueBox(paste(depth," Inches"),
-    "Snow Depth Change in last 7 days",
+    "Snow Depth Change in last 4 days",
             color = "teal",
             icon = icon("snowflake"),
             width = 2
