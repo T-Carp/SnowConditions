@@ -1,5 +1,5 @@
 ---
-title: "Snow Tracker"
+title: "Ski Conditions Dashboard"
 output: html_notebook
 ---
 
@@ -16,6 +16,7 @@ library(shiny)
 library(shinydashboard)
 library(plotly)
 library(leaflet)
+library(rsconnect)
 theme_set(theme_minimal())
 key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
 ```
@@ -179,7 +180,7 @@ temp_final <- obs_final %>%
 ### Shiny Workspace
 ```{r, message=FALSE}
 ui <- dashboardPage(
-  dashboardHeader(title = "Snow Tracker"),
+  dashboardHeader(title = "Ski Conditions Dashboard"),
   dashboardSidebar(
     
       selectInput("select", 
@@ -264,6 +265,7 @@ server <- function(input, output) {
            "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
            "6" = obs_final %>% filter(mountain == "Tahoe, California, USA"))
       
+    title <- "Weather Station Locations (click Marker for Info)"   
     content <- paste(sep = "<br/>",
         paste("Ski Resort: ", data$mountain),                 
         paste("Station: ",data$name),
@@ -271,7 +273,8 @@ server <- function(input, output) {
   
     leaflet() %>%
     addTiles() %>% 
-    addMarkers(lng= data$longitude, lat= data$latitude, popup = content)  
+    addMarkers(lng= data$longitude, lat= data$latitude, popup = content) %>% 
+    addControl(title, position = "topright")
   })
   
   ### Temp Chart
@@ -286,7 +289,7 @@ server <- function(input, output) {
            "6" = temp_final %>% filter(mountain == "Tahoe, California, USA"))
     
  f <- ggplot(temp_final,aes(date,temp))+
-        geom_smooth(aes(group=temptype,color=temptype))+
+        stat_smooth(aes(color=temptype),span = 0.01)+
         scale_x_date(limits = c(input$date[1], input$date[2]))+
         theme(legend.position="none",
               axis.title.x=element_blank(),
@@ -294,6 +297,8 @@ server <- function(input, output) {
         ggtitle("Temperature by Station (Farenheit)")+
         scale_color_economist()
         ggplotly(f, tooltip = "temp")
+        
+        
   
 })
   
@@ -338,7 +343,9 @@ server <- function(input, output) {
     date_df %>% 
     filter(elevationFt == max(elevationFt)) %>% 
     filter(date == max(date)) %>% 
-    select(date),"Last Snow Depth Reading",
+    select(date) %>% 
+      mutate(date = paste(month(date, label = TRUE, abbr = FALSE),day(date),year(date))),
+      "Last Snow Depth Reading",
             color = "blue",
             icon = icon("calendar-alt"),
             width = 2
@@ -360,8 +367,7 @@ server <- function(input, output) {
  depth_find <- function(df){
  x <- df %>% filter(elevationFt == max(elevationFt)) %>% 
    filter(date == max(date)) %>% 
-   select(snwd)
- 
+   select(snwd) 
  y <- df %>% filter(elevationFt == max(elevationFt)) %>% 
              filter(date == min(date)) %>% 
              select(snwd)
@@ -378,7 +384,7 @@ depth <- data_depth %>%
  
   valueBox(paste(depth," Inches"),
     "Snow Depth Change in last 4 days",
-            color = "teal",
+            color = "light-blue",
             icon = icon("snowflake"),
             width = 2
   )
@@ -404,7 +410,7 @@ depth <- data_depth %>%
  }
  
  icon_func <- function(d){
-   ifelse(d > 25, return(icon("thumbs-down")),return(icon("thumbs-up")))
+   ifelse(d > 30, return(icon("thumbs-down")),return(icon("thumbs-up")))
  }
  
  d <- data_dens %>% 
