@@ -170,8 +170,8 @@ obs_final <- obs %>%
 ### Temp Data Frame
 ```{r}
 temp_final <- obs_final %>% 
-  select(mountain, name, date, tavg, tmax, tmin) %>% 
-  gather(key = temptype, value = temp, c(tavg,tmax,tmin))
+  select(mountain, name, date,tmax, tmin) %>% 
+  gather(key = temptype, value = temp, c(tmax,tmin))
 
 
 ```
@@ -289,14 +289,14 @@ server <- function(input, output) {
            "6" = temp_final %>% filter(mountain == "Tahoe, California, USA"))
     
  f <- ggplot(temp_final,aes(date,temp))+
-        stat_smooth(aes(color=temptype),span = 0.01)+
+        geom_line(aes(color=temptype))+
         scale_x_date(limits = c(input$date[1], input$date[2]))+
         theme(legend.position="none",
               axis.title.x=element_blank(),
               axis.title.y=element_blank())+
-        ggtitle("Temperature by Station (Farenheit)")+
+        ggtitle("High-Low Temperature by Station (Farenheit)")+
         scale_color_economist()
-        ggplotly(f, tooltip = "temp")
+        ggplotly(f)
         
         
   
