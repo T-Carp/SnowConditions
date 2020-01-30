@@ -22,6 +22,7 @@ theme_set(theme_minimal())
 key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
 ```
 
+
 ### create Station Dataframe
 ```{r}
 meteo_clear_cache(force = FALSE)
@@ -68,7 +69,7 @@ my_stations <- data.frame(
                "USS0020K25S"))
 ```
 
-### Use to find possible Elevation by Station
+### Create Station Demographic Fact Table
 ```{r}
 ### Create for loop vars
 y <- paste('GHCND',my_stations$id,sep = ":")
@@ -86,8 +87,7 @@ for (i in seq_along(y))
 
 
 ### Parse data to Dataframe
-stations_demographic <- 
-  data.frame(matrix(unlist(stations), nrow=length(stations), byrow=T))
+stations_demographic <-  data.frame(matrix(unlist(stations), nrow=length(stations), byrow=T))
 
 colnames(stations_demographic) <- 
   c("elevation", 
@@ -103,20 +103,22 @@ colnames(stations_demographic) <-
 
 ### Create elevation in ft, split ID, filter date
 stations_demographic <- stations_demographic %>% 
-  separate(GHCND_id, c("type","id"), sep = ":", remove = FALSE) %>% 
-  select(-c("mindate", "maxdate", "type", "elevationUnit")) %>% 
-  rename(elevationMeter = elevation) %>% 
-  left_join(my_stations, by = c("id" = "id"))
+                        separate(GHCND_id, c("type","id"), sep = ":", remove = FALSE) %>% 
+                        select(-c("mindate", "maxdate", "type", "elevationUnit")) %>% 
+                        rename(elevationMeter = elevation) %>% 
+                        left_join(my_stations, by = c("id" = "id"))
 
 ```
 
 
 ### Metric Conversion Formulas
 ```{r}
+# Celcius to Farenheit
 farenheit <- function(celcius){
   (celcius/10)*(9/5)+32
 }
 
+# millimeters to inches
 inch_rain <- function(millimeter){
   (millimeter/10)/25.4
 }
@@ -125,17 +127,18 @@ inch_snow <- function(snow){
   snow/25.4
 }
 
-#### Add function for SWE equivalency and estimae snow density.
+# Snow Density
 snw_density <- function(swe,snwd){
   (swe/snwd)*100
 }
 
+# Meters to Ft
 elevation_ft <- function(elevation){
   as.numeric(as.character(elevation)) * 3.28984
 }
 
-
 ```
+
 
 ### Incremental refresh using pins
 ```{r, message=FALSE}
@@ -150,7 +153,7 @@ obs <- rbind(obs_new,obs)
 obs %>% pin("hist_obs")
 ```
 
-### Convert from metric system (Declare function for switch statement)
+### Prepare final dataframe, Convert from metric system 
 ```{r}
 
 obs_final <- obs %>% 
@@ -168,20 +171,10 @@ obs_final <- obs %>%
          ) %>% 
   filter(!is.na(tavg))
 
-
-```
-
-### Temp Data Frame
-```{r}
-temp_final <- obs_final %>% 
-  select(mountain, name, date,tmax, tmin) %>% 
-  gather(key = temptype, value = temp, c(tmax,tmin))
-
-
 ```
 
 
-### Shiny Workspace (Add static line for freezing level on Temp Chart)
+### Shiny Workspace 
 ```{r, message=FALSE}
 ui <- dashboardPage(
   dashboardHeader(title = "Ski Conditions Dashboard"),
@@ -197,11 +190,9 @@ ui <- dashboardPage(
                                  "Tahoe, California, USA" = 6), 
                                   selected = 1),
     
-
-    
       dateRangeInput("date", 
                        h3("Select a Date Range"), 
-                       start = Sys.Date()-550, 
+                       start = Sys.Date()-100, 
                        end = Sys.Date(),
                        format = "yyyy-mm-dd", 
                        startview = "month", 
@@ -210,7 +201,7 @@ ui <- dashboardPage(
                 ),
   dashboardBody(
     
-              # Frontpage - boxes - start -----------------------------------------------
+# Frontpage - boxes - start -----------------------------------------------
     fluidRow(
       
           valueBoxOutput("date_out"),
@@ -218,9 +209,9 @@ ui <- dashboardPage(
           valueBoxOutput("density")
           ),
 
-          # Frontpage - boxes - end -------------------------------------------------
+# Frontpage - boxes - end -------------------------------------------------
         
-         # Box layout - Grid - Start
+# Box layout - Grid - Start
 #-------------------------------------------------
     fluidRow(
       box(leafletOutput("map", height = 400)),
@@ -234,124 +225,102 @@ ui <- dashboardPage(
 )
 
 server <- function(input, output) {
-
-data_filter <- function(selection) {
   
-  switch(selection,
+data <- reactive({
+          switch(input$select,
            "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
            "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
            "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
            "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
            "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
            "6" = obs_final %>% filter(mountain == "Tahoe, California, USA"))
-  return(obs_final)
-  
-}
-  ### Snow Depth Chart
+                })
+
+val_data <- reactive({
+            data()%>% 
+            filter(!is.na(date),!is.na(snwd))
+          })
+
+  ### Snow Depth Chart--------------------------------------------------------------
   output$snowdepth <- renderPlotly({
-  data <- reactive({data_filter(as.numeric(input$select))})
-     p <- ggplot(data,aes(date,snwd))+
-        geom_area(aes(fill=name),size=1)+
-        scale_x_date(limits = c(input$date[1], input$date[2]))+
-        theme(legend.position="none",
-              axis.title.x=element_blank(),
-              axis.title.y=element_blank())+
-        ggtitle("Snow Depth by Station (Inches)")+ 
-        scale_fill_manual(values = c("#6794a7", "#76c0c1"))
-      
     
+     p <- ggplot(data(),aes(date,snwd))+
+          geom_area(aes(fill=name),size=1)+
+          scale_x_date(limits = c(input$date[1], input$date[2]))+
+          theme(legend.position="none",
+                axis.title.x=element_blank(),
+                axis.title.y=element_blank())+
+          ggtitle("Snow Depth by Station (Inches)")+ 
+          scale_fill_manual(values = c("#6794a7", "#76c0c1"))
+      
      ggplotly(p)
   })
    
-  ### Station Location Map 
+  ### Station Location Map-------------------------------------------------------------- 
   output$map <- renderLeaflet({
     
-      data <- switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
-           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
-           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
-           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA"))
-      
-    title <- "Weather Station Locations (click Marker for Info)"   
+    data <- data()
+    
+    title <- "Weather Station Locations (click Marker for Info)" 
+    
     content <- paste(sep = "<br/>",
-        paste("Ski Resort: ", data$mountain),                 
-        paste("Station: ",data$name),
-        paste("Elevation: ",data$elevationFt))
+               paste("Ski Resort: ", data$mountain),                 
+               paste("Station: ",data$name),
+               paste("Elevation: ",data$elevationFt))
   
     leaflet() %>%
-    addTiles() %>% 
-    addMarkers(lng= data$longitude, lat= data$latitude, popup = content) %>% 
-    addControl(title, position = "topright")
+      addTiles() %>% 
+      addMarkers(lng= data$longitude, lat= data$latitude, popup = content) %>% 
+      addControl(title, position = "topright")
   })
   
-  ### Temp Chart
+  ### Temp Chart--------------------------------------------------------------
+  
   output$temp <- renderPlotly({
   
-    temp_final <- switch(input$select,
-           "1" = temp_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
-           "3" = temp_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
-           "2" = temp_final %>% filter(mountain == "Mt Baker, Washington, USA"),
-           "4" = temp_final %>% filter(mountain == "White Pass, Washington, USA"),
-           "5" = temp_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
-           "6" = temp_final %>% filter(mountain == "Tahoe, California, USA"))
+    temp_final <- data() %>% 
+                  select(mountain, name, date,tmax, tmin) %>% 
+                  gather(key = temptype, value = temp, c(tmax,tmin))
     
- f <- ggplot(temp_final,aes(date,temp))+
-        geom_line(aes(color=temptype))+
-        scale_x_date(limits = c(input$date[1], input$date[2]))+
-        theme(legend.position="none",
-              axis.title.x=element_blank(),
-              axis.title.y=element_blank())+
-              geom_hline(yintercept=32, linetype="dashed", 
-              color = "blue", size=1)+
-        ggtitle("High-Low Temperature by Station (Farenheit)")+
-        scale_color_economist()
-        ggplotly(f)
+  f <- ggplot(temp_final,aes(date,temp))+
+          geom_line(aes(color=temptype))+
+          scale_x_date(limits = c(input$date[1], input$date[2]))+
+          theme(legend.position="none",
+                axis.title.x=element_blank(),
+                axis.title.y=element_blank())+
+                geom_hline(yintercept=32, linetype="dashed", 
+                color = "blue", size=1)+
+          ggtitle("High-Low Temperature by Station (Farenheit)")+
+          scale_color_economist()
+          ggplotly(f)
         
         
   
 })
   
-  ### PRCP Chart
+  ### PRCP Chart--------------------------------------------------------------
+  
   output$prcp <- renderPlotly({
-  
-     data <- switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
-           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
-           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
-           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA"))
-    
- q <- ggplot(data,aes(date,prcp))+
-        geom_line(aes(color=name), size=1)+
-        scale_x_date(limits = c(input$date[1], input$date[2]))+
-        theme(legend.position="none",
+
+   q <- ggplot(data(),aes(date,prcp))+
+          geom_line(aes(color=name), size=1)+
+          scale_x_date(limits = c(input$date[1], input$date[2]))+
+          theme(legend.position="none",
               axis.title.x=element_blank(),
               axis.title.y=element_blank())+
-        ggtitle("Precipitation by Station (Inches)") +   
-        scale_color_economist()
+          ggtitle("Precipitation by Station (Inches)") +   
+          scale_color_economist()
         
-     ggplotly(q)
-  
-
+        ggplotly(q)
   
 })
 
-  ### Max Date Value Box
-  output$date_out <- renderValueBox({
-  date_df <-  switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
-           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
-           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
-           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA")) %>% 
-  filter(!is.na(date),!is.na(snwd))
+  ### Max Date Value Box--------------------------------------------------------------
   
+  output$date_out <- renderValueBox({
+
   valueBox(
-    date_df %>% 
+    val_data() %>% 
     filter(elevationFt == max(elevationFt)) %>% 
     filter(date == max(date)) %>% 
     select(date) %>% 
@@ -363,32 +332,24 @@ data_filter <- function(selection) {
          )
 })
 
-  ### Depth Change Value Box
+  ### Depth Change Value Box--------------------------------------------------------------
   output$depth_out <- renderValueBox({
   
-  data_depth <- switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
-           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
-           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
-           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA")) %>% 
-  filter(!is.na(date),!is.na(snwd))
- 
  depth_find <- function(df){
- x <- df %>% filter(elevationFt == max(elevationFt)) %>% 
-   filter(date == max(date)) %>% 
-   select(snwd) 
- y <- df %>% filter(elevationFt == max(elevationFt)) %>% 
-             filter(date == min(date)) %>% 
-             select(snwd)
+   x <- df %>% 
+            filter(elevationFt == max(elevationFt)) %>% 
+            filter(date == max(date)) %>% 
+            select(snwd) 
+   y <- df %>% 
+            filter(elevationFt == max(elevationFt)) %>% 
+            filter(date == min(date)) %>% 
+            select(snwd)
  
  change <- x-y
- change <- as.integer(change)
- return(change)
+ return(as.integer(change))
  }
  
-depth <- data_depth %>% 
+depth <- val_data() %>% 
     select(date,snwd,elevationFt) %>% 
     filter(date <= max(date),date >= max(date)-4, !is.na(snwd)) %>% 
     depth_find()
@@ -401,32 +362,25 @@ depth <- data_depth %>%
   )
 })
 
-  ### Last Recorded Snow Density
+  ### Last Recorded Snow Density--------------------------------------------------------------
   output$density <- renderValueBox({
-  
-  data_dens <- switch(input$select,
-           "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
-           "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
-           "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
-           "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
-           "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
-           "6" = obs_final %>% filter(mountain == "Tahoe, California, USA")) %>% 
-   filter(!is.na(snw_dens))
  
  dens_find <- function(df){
- x <- df %>% filter(elevationFt == max(elevationFt)) %>% 
-   filter(date == max(date)) %>%
-   select(snw_dens)
- return(as.integer(x))
+ x <- df %>% 
+    filter(elevationFt == max(elevationFt)) %>% 
+    filter(date == max(date)) %>%
+    select(snw_dens)
+    return(as.integer(x))
  }
  
- icon_func <- function(d){
-   ifelse(d > 30, return(icon("thumbs-down")),return(icon("thumbs-up")))
- }
+ icon_func <- function(d)
+   {
+    ifelse(d > 30, return(icon("thumbs-down")),return(icon("thumbs-up")))
+   }
  
- d <- data_dens %>% 
-    select(date,snw_dens,elevationFt) %>% 
-    dens_find()
+ d <- val_data() %>% 
+      select(date,snw_dens,elevationFt) %>% 
+      dens_find()
  
   valueBox(paste(d,"%"),
     "Current Snow Density",
