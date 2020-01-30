@@ -1,0 +1,28 @@
+path:
+- data.csv
+- data.rds
+rows: 12040
+cols: 20
+columns:
+  id: character
+  date: Date
+  prcp: numeric
+  snwd: numeric
+  tavg: numeric
+  tmax: numeric
+  tmin: numeric
+  tobs: integer
+  wesd: integer
+  dapr: integer
+  mdpr: integer
+  snow: numeric
+  wesf: integer
+  elevationMeter: factor
+  latitude: factor
+  name: factor
+  datacoverage: factor
+  GHCND_id: factor
+  longitude: factor
+  mountain: factor
+description: Historical Weather Observations
+type: table
