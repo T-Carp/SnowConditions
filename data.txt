@@ -1,0 +1,6 @@
+- path: obs
+  name: obs
+  rows: 12040
+  cols: 20
+  description: Historical Weather Observations
+  type: table
