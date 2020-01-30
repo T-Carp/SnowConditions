@@ -17,6 +17,7 @@ library(shinydashboard)
 library(plotly)
 library(leaflet)
 library(rsconnect)
+library(pins)
 theme_set(theme_minimal())
 key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
 ```
@@ -177,7 +178,7 @@ temp_final <- obs_final %>%
 ```
 
 
-### Shiny Workspace
+### Shiny Workspace (Add static line for freezing level on Temp Chart)
 ```{r, message=FALSE}
 ui <- dashboardPage(
   dashboardHeader(title = "Ski Conditions Dashboard"),
@@ -294,6 +295,8 @@ server <- function(input, output) {
         theme(legend.position="none",
               axis.title.x=element_blank(),
               axis.title.y=element_blank())+
+              geom_hline(yintercept=32, linetype="dashed", 
+              color = "blue", size=1)+
         ggtitle("High-Low Temperature by Station (Farenheit)")+
         scale_color_economist()
         ggplotly(f)
