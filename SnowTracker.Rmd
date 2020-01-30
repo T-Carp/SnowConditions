@@ -142,15 +142,15 @@ elevation_ft <- function(elevation){
 
 ### Incremental refresh using pins
 ```{r, message=FALSE}
-obs <- pin_get("hist_obs")
+obs <- pin_get("obs", board = "github")
 
-obs_new <- meteo_pull_monitors(my_stations$id, date_min = max(obs$date)+1 ) %>% 
+obs_new <- meteo_pull_monitors(my_stations$id, date_min = max(obs$date)+1) %>% 
    left_join(stations_demographic, by = c("id" = "id")) %>% 
    select(-c("awnd","wsfi","awdr")) %>% 
    filter(!is.na(tavg))
 
 obs <- rbind(obs_new,obs)
-obs %>% pin("hist_obs")
+pin(obs, description = "Historical Weather Observations", board = "github")
 ```
 
 ### Prepare final dataframe, Convert from metric system 
@@ -177,8 +177,8 @@ obs_final <- obs %>%
 ### Shiny Workspace 
 ```{r, message=FALSE}
 ui <- dashboardPage(
-  dashboardHeader(title = "Ski Conditions Dashboard"),
-  dashboardSidebar(
+      dashboardHeader(title = "Ski Conditions Dashboard"),
+      dashboardSidebar(
     
       selectInput("select", 
                   h3("Select Mountain"), 
