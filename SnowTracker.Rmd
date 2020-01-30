@@ -137,17 +137,20 @@ elevation_ft <- function(elevation){
 
 ```
 
-### Create Final Data Set
+### Incremental refresh using pins
 ```{r, message=FALSE}
+obs <- pin_get("hist_obs")
 
-obs <- meteo_pull_monitors(my_stations$id, date_min = '2016-11-01' ) %>% 
+obs_new <- meteo_pull_monitors(my_stations$id, date_min = max(obs$date)+1 ) %>% 
    left_join(stations_demographic, by = c("id" = "id")) %>% 
-   select(-c("awnd","wsfi","wesf","awdr","mdpr","dapr","snow"))
+   select(-c("awnd","wsfi","awdr")) %>% 
+   filter(!is.na(tavg))
 
-
+obs <- rbind(obs_new,obs)
+obs %>% pin("hist_obs")
 ```
 
-### Convert from metric system
+### Convert from metric system (Declare function for switch statement)
 ```{r}
 
 obs_final <- obs %>% 
@@ -231,17 +234,22 @@ ui <- dashboardPage(
 )
 
 server <- function(input, output) {
+
+data_filter <- function(selection) {
   
-  ### Snow Depth Chart
-  output$snowdepth <- renderPlotly({
-      data <- switch(input$select,
+  switch(selection,
            "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
            "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
            "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
            "4" = obs_final %>% filter(mountain == "White Pass, Washington, USA"),
            "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
            "6" = obs_final %>% filter(mountain == "Tahoe, California, USA"))
-      
+  return(obs_final)
+  
+}
+  ### Snow Depth Chart
+  output$snowdepth <- renderPlotly({
+  data <- reactive({data_filter(as.numeric(input$select))})
      p <- ggplot(data,aes(date,snwd))+
         geom_area(aes(fill=name),size=1)+
         scale_x_date(limits = c(input$date[1], input$date[2]))+
@@ -308,7 +316,7 @@ server <- function(input, output) {
   ### PRCP Chart
   output$prcp <- renderPlotly({
   
-     prcp_final <- switch(input$select,
+     data <- switch(input$select,
            "1" = obs_final %>% filter(mountain == "Mt Hood, Oregon, USA"),
            "3" = obs_final %>% filter(mountain == "Mt Bachelor, Oregon, USA"),
            "2" = obs_final %>% filter(mountain == "Mt Baker, Washington, USA"),
@@ -316,7 +324,7 @@ server <- function(input, output) {
            "5" = obs_final %>% filter(mountain == "Schweitzer, Idaho, USA"),
            "6" = obs_final %>% filter(mountain == "Tahoe, California, USA"))
     
- q <- ggplot(prcp_final,aes(date,prcp))+
+ q <- ggplot(data,aes(date,prcp))+
         geom_line(aes(color=name), size=1)+
         scale_x_date(limits = c(input$date[1], input$date[2]))+
         theme(legend.position="none",
