@@ -4,3 +4,9 @@
   cols: 20
   description: Historical Weather Observations
   type: table
+- path: stations-demographic
+  name: stations-demographic
+  rows: 18
+  cols: 8
+  description: Stations Fact Table
+  type: table
