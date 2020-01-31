@@ -1,0 +1,16 @@
+path:
+- data.csv
+- data.rds
+rows: 18
+cols: 8
+columns:
+  elevationMeter: factor
+  latitude: factor
+  name: factor
+  datacoverage: factor
+  GHCND_id: factor
+  id: character
+  longitude: factor
+  mountain: factor
+description: Stations Fact Table
+type: table
