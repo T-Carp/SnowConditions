@@ -3,27 +3,24 @@ title: "Ski Conditions Dashboard"
 output: html_notebook
 ---
 
- 
-### Load rnoaa API package
+### Load essential Packages
 ```{r}
-library(tidyverse)
-library(rnoaa)
-library(lubridate)
-library(ggplot2)
-library(ggthemes)
-library(scales)
-library(shiny)
-library(shinydashboard)
-library(plotly)
-library(leaflet)
-library(rsconnect)
-library(pins)
+suppressMessages(library(tidyverse))  
+suppressMessages(library(rnoaa))
+suppressMessages(library(ggplot2))
+suppressMessages(library(ggthemes))
+suppressMessages(library(lubridate))
+suppressMessages(library(shiny))
+suppressMessages(library(shinydashboard))
+suppressMessages(library(plotly))
+suppressMessages(library(leaflet))
+suppressMessages(library(rsconnect))
+suppressMessages(library(pins))
 theme_set(theme_minimal())
 key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
 ```
 
-
-### create Station Dataframe
+### Create Station Demographic Dataframe
 ```{r}
 meteo_clear_cache(force = FALSE)
 
@@ -31,7 +28,7 @@ my_stations <- data.frame(
   mountain = c(
                "Mt Hood, Oregon, USA",
                "Mt Hood, Oregon, USA",
-               "Mt Hood, Oregon, USA", 
+               "Mt Hood, Oregon, USA",
                "Mt Baker, Washington, USA",
                "Mt Baker, Washington, USA",
                "Mt Baker, Washington, USA",
@@ -47,7 +44,7 @@ my_stations <- data.frame(
                "Tahoe, California, USA",
                "Tahoe, California, USA",
                "Tahoe, California, USA"),
-  
+
   id = c(
                "USC00358530",
                "USS0021D08S",
@@ -69,46 +66,55 @@ my_stations <- data.frame(
                "USS0020K25S"))
 ```
 
+
+
 ### Create Station Demographic Fact Table
 ```{r}
 ### Create for loop vars
-y <- paste('GHCND',my_stations$id,sep = ":")
-count <- 0
-stations <- vector('list', length = length(my_stations$id))
-
-### Gather Data for Each Station
-for (i in seq_along(y))
-{
-    stations[[i]] <- ncdc_stations(datasetid='GHCND', 
-                     stationid = y[[i]],
-                     token = key)
-    count + 1
-}
-
-
-### Parse data to Dataframe
-stations_demographic <-  data.frame(matrix(unlist(stations), nrow=length(stations), byrow=T))
-
-colnames(stations_demographic) <- 
-  c("elevation", 
-    "mindate", 
-    "maxdate", 
-    "latitude", 
-    "name", 
-    "datacoverage", 
-    "GHCND_id", 
-    "elevationUnit", 
-    "longitude"
-    )
-
-### Create elevation in ft, split ID, filter date
-stations_demographic <- stations_demographic %>% 
-                        separate(GHCND_id, c("type","id"), sep = ":", remove = FALSE) %>% 
-                        select(-c("mindate", "maxdate", "type", "elevationUnit")) %>% 
-                        rename(elevationMeter = elevation) %>% 
-                        left_join(my_stations, by = c("id" = "id"))
+# y <- paste('GHCND',my_stations$id,sep = ":")
+# count <- 0
+# stations <- vector('list', length = length(my_stations$id))
+# 
+# ### Gather Data for Each Station
+# for (i in seq_along(y))
+# {
+#     stations[[i]] <- ncdc_stations(datasetid='GHCND', 
+#                      stationid = y[[i]],
+#                      token = key)
+#     count + 1
+# }
+# 
+# 
+# ### Parse data to Dataframe
+# stations_demographic <-  data.frame(matrix(unlist(stations), nrow=length(stations), byrow=T))
+# 
+# colnames(stations_demographic) <- 
+#   c("elevation", 
+#     "mindate", 
+#     "maxdate", 
+#     "latitude", 
+#     "name", 
+#     "datacoverage", 
+#     "GHCND_id", 
+#     "elevationUnit", 
+#     "longitude"
+#     )
+# 
+# ### Create elevation in ft, split ID, filter date
+# stations_demographic <- stations_demographic %>% 
+#                         separate(GHCND_id, c("type","id"), sep = ":", remove = FALSE) %>% 
+#                         select(-c("mindate", "maxdate", "type", "elevationUnit")) %>% 
+#                         rename(elevationMeter = elevation) %>% 
+#                         left_join(my_stations, by = c("id" = "id"))
 
 ```
+
+### Pull Station Demographic Table From Github 
+```{r}
+url_demog <- "https://raw.githubusercontent.com/T-Carp/SnowConditions/master/stations-demographic/data.csv"
+stations_demographic <- read.csv(url_demog)
+```
+
 
 
 ### Metric Conversion Formulas
@@ -140,12 +146,14 @@ elevation_ft <- function(elevation){
 ```
 
 
-### Incremental refresh using pins 
+
+### Pull Historical Data from Github and Append with new data from API
 ```{r, message=FALSE}
 
-board_register_github(repo = "T-Carp/SnowConditions", token = "f7d52ac0f9ea58f1d2bab52dcc29104e49b9dfeb")
-
-obs <- pin_get("obs", board = "github")
+url_hist <- "https://raw.githubusercontent.com/T-Carp/SnowConditions/master/obs/data.csv"
+obs <- read.csv(url_hist) %>% 
+  mutate(date = as.Date(date)) %>% 
+  select(-c(dapr, mdpr, snow, wesf))
 
 obs_new <- meteo_pull_monitors(my_stations$id, date_min = max(obs$date)+1) %>% 
    left_join(stations_demographic, by = c("id" = "id")) %>% 
@@ -153,10 +161,12 @@ obs_new <- meteo_pull_monitors(my_stations$id, date_min = max(obs$date)+1) %>%
    filter(!is.na(tavg))
 
 obs <- rbind(obs_new,obs)
-pin(obs, description = "Historical Weather Observations", board = "github")
+
 ```
 
-### Prepare final dataframe, Convert from metric system 
+
+
+### Prepare Final Dataframe, Convert From Metric System 
 ```{r}
 
 obs_final <- obs %>% 
@@ -175,6 +185,7 @@ obs_final <- obs %>%
   filter(!is.na(tavg))
 
 ```
+
 
 
 ### Shiny Workspace 
@@ -214,8 +225,7 @@ ui <- dashboardPage(
 
 # Frontpage - boxes - end -------------------------------------------------
         
-# Box layout - Grid - Start
-#-------------------------------------------------
+# Box layout - Grid - Start #-------------------------------------------------
     fluidRow(
       box(leafletOutput("map", height = 400)),
       box(plotlyOutput("temp", height = 400)),
@@ -223,7 +233,7 @@ ui <- dashboardPage(
       box(plotlyOutput("prcp", height = 400))
 
     )
-          #Box layout - Grid - end #------------------------------------------------- 
+#Box layout - Grid - end #------------------------------------------------- 
   )
 )
 
