@@ -140,8 +140,11 @@ elevation_ft <- function(elevation){
 ```
 
 
-### Incremental refresh using pins
+### Incremental refresh using pins 
 ```{r, message=FALSE}
+
+board_register_github(repo = "T-Carp/SnowConditions", token = "f7d52ac0f9ea58f1d2bab52dcc29104e49b9dfeb")
+
 obs <- pin_get("obs", board = "github")
 
 obs_new <- meteo_pull_monitors(my_stations$id, date_min = max(obs$date)+1) %>% 
