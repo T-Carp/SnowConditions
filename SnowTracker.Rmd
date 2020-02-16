@@ -17,7 +17,12 @@ suppressMessages(library(leaflet))
 suppressMessages(library(rsconnect))
 suppressMessages(library(pins))
 theme_set(theme_minimal())
-key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
+
+### set key <- to your own API key for noaa
+key <- read.delim("API_Key.txt", header = FALSE)
+key <- as.character(key[1,])
+
+
 ```
 
 ### Create Station Demographic Dataframe
@@ -70,7 +75,7 @@ my_stations <- data.frame(
 
 ### Create Station Demographic Fact Table
 ```{r}
-### Create for loop vars
+# ### Create for loop vars
 # y <- paste('GHCND',my_stations$id,sep = ":")
 # count <- 0
 # stations <- vector('list', length = length(my_stations$id))
@@ -78,7 +83,7 @@ my_stations <- data.frame(
 # ### Gather Data for Each Station
 # for (i in seq_along(y))
 # {
-#     stations[[i]] <- ncdc_stations(datasetid='GHCND', 
+#     stations[[i]] <- ncdc_stations(datasetid='GHCND',
 #                      stationid = y[[i]],
 #                      token = key)
 #     count + 1
@@ -88,23 +93,23 @@ my_stations <- data.frame(
 # ### Parse data to Dataframe
 # stations_demographic <-  data.frame(matrix(unlist(stations), nrow=length(stations), byrow=T))
 # 
-# colnames(stations_demographic) <- 
-#   c("elevation", 
-#     "mindate", 
-#     "maxdate", 
-#     "latitude", 
-#     "name", 
-#     "datacoverage", 
-#     "GHCND_id", 
-#     "elevationUnit", 
+# colnames(stations_demographic) <-
+#   c("elevation",
+#     "mindate",
+#     "maxdate",
+#     "latitude",
+#     "name",
+#     "datacoverage",
+#     "GHCND_id",
+#     "elevationUnit",
 #     "longitude"
 #     )
 # 
 # ### Create elevation in ft, split ID, filter date
-# stations_demographic <- stations_demographic %>% 
-#                         separate(GHCND_id, c("type","id"), sep = ":", remove = FALSE) %>% 
-#                         select(-c("mindate", "maxdate", "type", "elevationUnit")) %>% 
-#                         rename(elevationMeter = elevation) %>% 
+# stations_demographic <- stations_demographic %>%
+#                         separate(GHCND_id, c("type","id"), sep = ":", remove = FALSE) %>%
+#                         select(-c("mindate", "maxdate", "type", "elevationUnit")) %>%
+#                         rename(elevationMeter = elevation) %>%
 #                         left_join(my_stations, by = c("id" = "id"))
 
 ```
