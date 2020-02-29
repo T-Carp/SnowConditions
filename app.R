@@ -15,7 +15,7 @@ theme_set(theme_minimal())
 #key <- Insert NOAA key here
 
 
-### Create Station Demographic Dataframe
+### Create Station Demographic Dataframe--------------------------------------------
 
 meteo_clear_cache(force = FALSE)
 
@@ -64,11 +64,9 @@ my_stations <- data.frame(
 
 
 ### Create Station Demographic Fact Table----------------------------------------------
-### This commented-out section creates the historical dataset. 
-### I read the historical data from a csv on github to help with performance.  
-### Code below demonstrates how the historical dataset was created
+### Use for-loop to pull demographic info for each station.
+### For performance purposes I pull this data from github but the code below explains how that data was created
 
-### Create for loop vars
 # y <- paste('GHCND',my_stations$id,sep = ":")
 # count <- 0
 # stations <- vector('list', length = length(my_stations$id))
@@ -104,10 +102,10 @@ my_stations <- data.frame(
 #                         select(-c("mindate", "maxdate", "type", "elevationUnit")) %>% 
 #                         rename(elevationMeter = elevation) %>% 
 #                         left_join(my_stations, by = c("id" = "id"))
-#------------------------------------------------------------------------------------------------
 
 
-### Pull Station Demographic Table From Github 
+
+### Pull Station Demographic Table From Github-----------------------------------------------
 
 url_demog <- "https://raw.githubusercontent.com/T-Carp/SnowConditions/master/stations-demographic/data.csv"
 stations_demographic <- read.csv(url_demog)
@@ -115,7 +113,7 @@ stations_demographic <- read.csv(url_demog)
 
 
 
-### Metric Conversion Formulas
+### Metric Conversion Formulas-----------------------------------------------
 
 # Celcius to Farenheit
 farenheit <- function(celcius){
@@ -141,11 +139,8 @@ elevation_ft <- function(elevation){
   as.numeric(as.character(elevation)) * 3.28984
 }
 
-
-
-
-
-### Pull Historical Data from Github and Append with new data from API. Much faster than reading entire data set via API
+### Pull Historical Data from Github and Append with new data from API-----------------------------------------------
+### Much faster than reading entire data-set via API
 url_hist <- "https://raw.githubusercontent.com/T-Carp/SnowConditions/master/obs/data.csv"
 obs <- read.csv(url_hist) %>% 
   mutate(date = as.Date(date)) %>% 
@@ -158,12 +153,7 @@ obs_new <- meteo_pull_monitors(my_stations$id, date_min = max(obs$date)+1) %>%
 
 obs <- rbind(obs_new,obs)
 
-
-
-
-
-### Prepare Final Dataframe, Convert From Metric System 
-
+### Prepare Final Dataframe, Convert From Metric System----------------------------------------------- 
 
 obs_final <- obs %>% 
   mutate(tavg = farenheit(tavg),
@@ -184,7 +174,7 @@ obs_final <- obs %>%
 
 
 
-### Shiny Workspace 
+### Shiny Workspace-----------------------------------------------
 
 ui <- dashboardPage(
   dashboardHeader(title = "Ski Conditions Dashboard"),
