@@ -63,7 +63,10 @@ my_stations <- data.frame(
 
 
 
-### Create Station Demographic Fact Table
+### Create Station Demographic Fact Table----------------------------------------------
+### This commented-out section creates the historical dataset. 
+### I read the historical data from a csv on github to help with performance.  
+### Code below demonstrates how the historical dataset was created
 
 ### Create for loop vars
 # y <- paste('GHCND',my_stations$id,sep = ":")
@@ -101,7 +104,7 @@ my_stations <- data.frame(
 #                         select(-c("mindate", "maxdate", "type", "elevationUnit")) %>% 
 #                         rename(elevationMeter = elevation) %>% 
 #                         left_join(my_stations, by = c("id" = "id"))
-
+#------------------------------------------------------------------------------------------------
 
 
 ### Pull Station Demographic Table From Github 
@@ -142,9 +145,7 @@ elevation_ft <- function(elevation){
 
 
 
-### Pull Historical Data from Github and Append with new data from API
-
-
+### Pull Historical Data from Github and Append with new data from API. Much faster than reading entire data set via API
 url_hist <- "https://raw.githubusercontent.com/T-Carp/SnowConditions/master/obs/data.csv"
 obs <- read.csv(url_hist) %>% 
   mutate(date = as.Date(date)) %>% 
