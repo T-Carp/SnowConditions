@@ -12,7 +12,7 @@ suppressMessages(library(leaflet))
 suppressMessages(library(rsconnect))
 suppressMessages(library(pins))
 theme_set(theme_minimal())
-key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
+#key <- Insert NOAA key here
 
 
 ### Create Station Demographic Dataframe
