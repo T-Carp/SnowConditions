@@ -19,8 +19,7 @@ suppressMessages(library(pins))
 theme_set(theme_minimal())
 
 ### set key <- to your own API key for noaa
-key <- read.delim("API_Key.txt", header = FALSE)
-key <- as.character(key[1,])
+key <- "oWIiLBATPGoafvkxmNwWOOCcmIOBVmOC"
 
 
 ```
@@ -162,7 +161,7 @@ obs <- read.csv(url_hist) %>%
 
 obs_new <- meteo_pull_monitors(my_stations$id, date_min = max(obs$date)+1) %>% 
    left_join(stations_demographic, by = c("id" = "id")) %>% 
-   select(-c("awnd","wsfi","awdr")) %>% 
+   select(-c("awnd","wsfi","awdr","snow")) %>% 
    filter(!is.na(tavg))
 
 obs <- rbind(obs_new,obs)

@@ -152,7 +152,7 @@ obs <- read.csv(url_hist) %>%
 
 obs_new <- meteo_pull_monitors(my_stations$id, date_min = max(obs$date)+1) %>% 
   left_join(stations_demographic, by = c("id" = "id")) %>% 
-  select(-c("awnd","wsfi","awdr")) %>% 
+  select(-c("awnd","wsfi","awdr", "snow")) %>% 
   filter(!is.na(tavg))
 
 obs <- rbind(obs_new,obs)
@@ -269,7 +269,7 @@ server <- function(input, output) {
     
     data <- data()
     
-    title <- "Weather Station Locations (click Marker for Info)" 
+    title <- "Weather Station Locations (click marker for info)" 
     
     content <- paste(sep = "<br/>",
                      paste("Ski Resort: ", data$mountain),                 
